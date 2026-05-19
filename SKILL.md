@@ -25,6 +25,20 @@ Every choice in this skill falls into one of three tiers. Know which tier you're
 
 When in doubt, default to the simplest option and stay consistent within a project.
 
+## Load References On-Demand
+
+SKILL.md contains the patterns and decisions. Full code examples are in reference files. **Load only the references relevant to the current task** to preserve context.
+
+| Task | Load |
+|------|------|
+| Building or modifying webpack config | `references/webpack-config.md` |
+| Writing or modifying page components | `references/page-component-patterns.md` |
+| Setting up or modifying the API layer | `references/fetch-wrapper.md` |
+| Setting up auth guard or redirect routes | `references/routing.md` |
+| Setting up the notification system | `references/notification.md` |
+| Setting up build/lint scripts | `references/build-scripts.md` |
+| Migrating a Vue 2 project | `references/vue2-migration.md` |
+
 ## Stack
 
 | Purpose | Package | Notes |
