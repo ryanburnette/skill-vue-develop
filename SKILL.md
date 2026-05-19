@@ -434,11 +434,14 @@ vm.$router.push({
 
 **Receiving side (root $route watcher):**
 ```js
+import { nextTick } from 'vue';
+import Notification from '../lib/notification.js';
+
+// In root component options
 watch: {
   $route: function (to) {
     if (to.params.notifications) {
-      var vm = this;
-      Vue.nextTick(function () {
+      nextTick(function () {
         to.params.notifications.forEach(function (n) {
           Notification.create(n);
         });

@@ -169,8 +169,6 @@ module.exports = {
 ```js
 'use strict';
 
-import forms from '@tailwindcss/forms';
-
 export default {
   content: ['./html/**/*.html', './js/**/*.vue'],
   theme: {
@@ -202,6 +200,7 @@ export default {
       },
     },
   },
+  // plugins: [forms], // Uncomment if using @tailwindcss/forms
   safelist: ['hidden', 'opacity-0', 'opacity-100'],
 };
 ```
@@ -297,7 +296,6 @@ HtmlWebpackPlugin generates the script and style tags. Templates only need the m
     "css-loader": "^7",
     "css-minimizer-webpack-plugin": "^7",
     "dotenv": "^16",
-    "html-loader": "^5",
     "html-webpack-plugin": "^5",
     "mini-css-extract-plugin": "^2",
     "postcss": "^8",
