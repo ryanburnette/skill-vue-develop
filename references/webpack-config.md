@@ -1,234 +1,324 @@
 # Webpack Configuration
 
-Full webpack config patterns for a Vue SPA project.
+Full webpack config for a Vue 3 SPA project. Single config file, environment-based.
 
-## Base Config (webpack.config.js)
+## webpack.config.js
 
 ```js
-var path = require('path');
-var MiniCssExtractPlugin = require('mini-css-extract-plugin');
-var VueLoaderPlugin = require('vue-loader/lib/plugin');
+'use strict';
+
+const path = require('path');
+const webpack = require('webpack');
+const { VueLoaderPlugin } = require('vue-loader');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
+const { DefinePlugin } = require('webpack');
+const TerserPlugin = require('terser-webpack-plugin');
+const dotenv = require('dotenv');
+
+dotenv.config();
+const isProduction = process.env.NODE_ENV === 'production';
+const includeDev = !isProduction;
+const siteAddress = process.env.SITE_ADDRESS;
+
+var assetModuleFilename = '[name].[ext]';
+var filename = '[name].js';
+if (isProduction) {
+  assetModuleFilename = '[name].[contenthash].[ext]';
+  filename = '[name].[contenthash].js';
+}
 
 module.exports = {
-  mode: 'development',
+  mode: isProduction ? 'production' : 'development',
   entry: {
     vendor: [
       'vue',
       'vue-router',
-      'axios',
-      'date-fns',
-      'lodash',
-      'uuid'
+      // Add other vendor packages here
     ],
     app: {
       import: './js/app.js',
-      dependOn: 'vendor'
-    }
+      dependOn: ['vendor'],
+    },
+    signin: {
+      import: './js/signin/app.js',
+      dependOn: 'vendor',
+    },
+    ...(includeDev ? { dev: { import: './js/dev/app.js' } } : {}),
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: '[name].js',
-    assetModuleFilename: '[name][ext]'
+    publicPath: '/',
+    filename: filename,
+    assetModuleFilename: assetModuleFilename,
+    clean: true,
   },
+  devtool: isProduction ? 'source-map' : 'inline-source-map',
+  devServer: {
+    static: {
+      directory: path.resolve(__dirname, 'dist'),
+    },
+    port: 3000,
+    host: '0.0.0.0',
+    allowedHosts: 'all',
+    client: {
+      webSocketURL: {
+        protocol: 'wss',
+        hostname: siteAddress,
+        port: 8443,
+      },
+    },
+    hot: false,
+    historyApiFallback: true,
+  },
+  plugins: [
+    new VueLoaderPlugin(),
+    new HtmlWebpackPlugin({
+      template: path.resolve(__dirname, 'html/index.html'),
+      filename: 'index.html',
+      inject: 'body',
+      chunks: ['vendor', 'app'],
+    }),
+    new HtmlWebpackPlugin({
+      template: path.resolve(__dirname, 'html/signin/index.html'),
+      filename: 'signin/index.html',
+      inject: 'body',
+      chunks: ['vendor', 'signin'],
+    }),
+    ...(includeDev
+      ? [
+          new HtmlWebpackPlugin({
+            template: path.resolve(__dirname, 'html/dev/index.html'),
+            filename: 'dev/index.html',
+            inject: 'body',
+            chunks: ['dev'],
+          }),
+        ]
+      : []),
+    new MiniCssExtractPlugin({
+      filename: isProduction ? '[name].[contenthash].css' : '[name].css',
+    }),
+    new DefinePlugin({
+      __VUE_OPTIONS_API__: JSON.stringify(true),
+      __VUE_PROD_DEVTOOLS__: JSON.stringify(!isProduction),
+      __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: JSON.stringify(!isProduction),
+    }),
+  ].filter(Boolean),
   module: {
     rules: [
       {
         test: /\.vue$/,
-        loader: 'vue-loader'
+        loader: 'vue-loader',
       },
       {
-        test: /\.js$/,
-        include: path.resolve(__dirname, 'js'),
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: ['@babel/preset-env']
-          }
-        }
+        test: /\.css$/,
+        use: [MiniCssExtractPlugin.loader, 'css-loader', 'postcss-loader'],
       },
-      {
-        test: /\.s[ac]ss$/,
-        use: [
-          MiniCssExtractPlugin.loader,
-          'css-loader',
-          'postcss-loader',
-          {
-            loader: 'sass-loader',
-            options: {
-              implementation: require.resolve('sass')
-            }
-          }
-        ]
-      },
-      {
-        test: /\.html/,
-        type: 'asset/resource'
-      }
-    ]
+    ],
   },
   resolve: {
     alias: {
-      vue: path.resolve(__dirname, 'node_modules/vue/dist/vue.js')
-    }
+      vue: path.resolve(__dirname, 'node_modules/vue/dist/vue.esm-bundler.js'),
+    },
   },
-  plugins: [
-    new MiniCssExtractPlugin({
-      filename: 'style.css'
-    }),
-    new VueLoaderPlugin()
-  ],
-  devtool: 'source-map'
+  optimization: {
+    minimize: isProduction,
+    minimizer: [
+      new CssMinimizerPlugin(),
+      new TerserPlugin({
+        terserOptions: {
+          format: {
+            comments: false,
+          },
+          keep_fnames: true,
+          keep_classnames: true,
+        },
+        extractComments: false,
+      }),
+    ],
+  },
 };
 ```
 
 Key notes:
 - `dependOn: 'vendor'` splits vendor libs into a separate bundle for caching
-- The `include` path for babel-loader must point to where your code lives (here, `js/` not `src/`)
-- SCSS pipeline always extracts to a file via MiniCssExtractPlugin, even in dev
-- `devtool: 'source-map'` should be included (was missing in original project)
-- Vue alias points to the full build (with template compiler) for dev
+- `contenthash` in production filenames for cache busting
+- `dotenv` loads `.env` for site address and other config
+- `HtmlWebpackPlugin` per entry with `chunks` filtering keeps each app isolated
+- Dev entry is conditionally included via `includeDev`
+- `DefinePlugin` sets Vue 3 feature flags (required for proper tree-shaking)
+- Vue alias points to `vue.esm-bundler.js` (full build with template compiler)
+- CSS pipeline: `postcss-loader` handles Tailwind and autoprefixing, `css-loader` resolves imports, `MiniCssExtractPlugin.loader` extracts to file
+- `devServer` config with `historyApiFallback` for SPA routing
 
-## Production Override (webpack.production.js)
-
-```js
-var path = require('path');
-var merge = require('webpack-merge');
-var CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
-var TerserPlugin = require('terser-webpack-plugin');
-
-var config = merge(require('./webpack.config.js'), {
-  mode: 'production',
-  resolve: {
-    alias: {
-      vue: path.resolve(__dirname, 'node_modules/vue/dist/vue.min.js')
-    }
-  },
-  optimization: {
-    minimize: true,
-    minimizer: [new CssMinimizerPlugin(), new TerserPlugin()]
-  }
-});
-
-module.exports = config;
-```
-
-The base config's `mode: 'development'` is overridden by `mode: 'production'` here. The Vue alias switches to the minified build.
-
-## PostCSS Config (postcss.config.js)
+## postcss.config.js
 
 ```js
+'use strict';
+
+const tailwindcss = require('tailwindcss');
+
 module.exports = {
-  plugins: [
-    require('tailwindcss'),
-    require('postcss-preset-env')({ stage: 0 })
-  ]
+  plugins: ['postcss-preset-env', tailwindcss],
 };
 ```
 
-## Tailwind Config (tailwind.config.js)
+## tailwind.config.js
 
 ```js
-module.exports = {
-  mode: 'jit',
-  content: [
-    './html/*.html',
-    './css/*.{css,scss,sass}',
-    './js/**/*.{js,vue}'
-  ],
-  safelist: [
-    // Add dynamically-constructed class names here
-  ],
+'use strict';
+
+import forms from '@tailwindcss/forms';
+
+export default {
+  content: ['./html/**/*.html', './js/**/*.vue'],
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter var', 'system-ui', 'sans-serif']
-      }
-    }
-  }
+        sans: ['"Source Sans 3"', 'Arial', 'sans-serif'],
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        fadeOut: {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
+        fadeScaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.975)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.3s ease',
+        'fade-out': 'fadeOut 0.3s ease',
+        'fade-scale-in': 'fadeScaleIn 0.3s ease',
+      },
+      colors: {
+        // App-specific colors
+      },
+    },
+  },
+  safelist: ['hidden', 'opacity-0', 'opacity-100'],
 };
 ```
 
-## SCSS Entry (css/style.scss)
+## CSS Entry (css/style.css)
 
-Only Tailwind directives, nothing else:
+Tailwind directives and `@layer components` for app-wide component styles:
 
-```scss
+```css
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  input.cb-form-input {
+    @apply block w-full rounded-md border-0 py-1.5 px-3 bg-white text-gray-900
+           shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400
+           sm:text-sm/6;
+  }
+  .cb-button {
+    @apply rounded-md px-3 py-2 bg-gray-100 text-sm font-semibold text-gray-900
+           hover:text-cogburn bg-white hover:bg-gray-100 shadow-sm ring-2
+           ring-inset ring-gray-300 focus-visible:ring-cogburn;
+  }
+}
+
+[v-cloak] {
+  display: none;
+}
 ```
 
-## HTML Shell (html/index.html)
+## HTML Shells
+
+HtmlWebpackPlugin generates the script and style tags. Templates only need the mount element:
 
 ```html
+<!-- html/index.html -->
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>App</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
 </head>
 <body>
-  <div class="app" v-cloak>
-    <div v-if="ready">
-      <router-view></router-view>
-    </div>
-    <loading-spinner v-else></loading-spinner>
-  </div>
-  <script src="vendor.js"></script>
-  <script src="app.js"></script>
+  <div id="app" v-cloak></div>
 </body>
 </html>
 ```
 
-Key patterns:
-- `v-cloak` on the mount element hides un-rendered Vue templates on load
-- `v-if="ready"` guards the entire app until root bootstrap completes
-- Vendor script loads before app script (required by `dependOn` split)
-- CSS loaded via `<link>` (extracted by MiniCssExtractPlugin)
+```html
+<!-- html/signin/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign In</title>
+</head>
+<body>
+  <div id="app" v-cloak></div>
+</body>
+</html>
+```
+
+```html
+<!-- html/dev/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dev</title>
+</head>
+<body>
+  <div id="dev-app" v-cloak></div>
+</body>
+</html>
+```
 
 ## package.json Dependencies
-
-Webpack-related packages:
 
 ```json
 {
   "dependencies": {
-    "vue": "^2.6.14",
-    "vue-router": "^3.5.2",
-    "vue-template-compiler": "^2.6.14",
-    "axios": "^0.21.1",
-    "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0",
-    "webpack-merge": "^5.8.0",
-    "vue-loader": "^15",
-    "babel-loader": "^8.2.2",
-    "@babel/core": "^7.14.6",
-    "@babel/preset-env": "^7.14.7",
-    "sass-loader": "^12.1.0",
-    "sass": "^1.54.9",
-    "css-loader": "^5.2.6",
-    "postcss-loader": "^6.1.0",
-    "postcss": "^8.3.5",
-    "postcss-preset-env": "^6.7.0",
-    "tailwindcss": "^3.2.4",
-    "@tailwindcss/forms": "^0.5.3",
-    "autoprefixer": "^10.2.6",
-    "mini-css-extract-plugin": "^1.6.1",
-    "css-minimizer-webpack-plugin": "^3.0.2",
-    "terser-webpack-plugin": "^5.1.4",
-    "@ryanburnette/hash-assets": "^1.1.1",
-    "style-loader": "^3.0.0"
+    "vue": "^3.5",
+    "vue-router": "^4.5",
+    "@vue/compiler-sfc": "^3.5",
+    "vue-loader": "^17",
+    "webpack": "^5",
+    "webpack-cli": "^5",
+    "webpack-dev-server": "^5",
+    "css-loader": "^7",
+    "css-minimizer-webpack-plugin": "^7",
+    "dotenv": "^16",
+    "html-loader": "^5",
+    "html-webpack-plugin": "^5",
+    "mini-css-extract-plugin": "^2",
+    "postcss": "^8",
+    "postcss-loader": "^8",
+    "postcss-preset-env": "^10",
+    "prettier": "^3",
+    "tailwindcss": "^3",
+    "terser-webpack-plugin": "^5"
+  },
+  "devDependencies": {
+    "eslint": "^10",
+    "eslint-plugin-vue": "^10"
   }
 }
 ```
 
-Note: No `devDependencies` separation. All packages are in `dependencies`. This is simple and works. If you want stricter separation for production builds, move build tools to `devDependencies`.
+Minimal. Every package is accounted for. No babel, no sass, no axios, no hash-assets.
 
 ## Troubleshooting
 
-- **Styles not updating in dev**: MiniCssExtractPlugin always extracts to a file. If the backend server caches, you may need a hard refresh. HMR for CSS would require `style-loader` instead, but that only works for dev mode.
-- **Vue warnings about runtime-only build**: Make sure the Vue alias points to `vue.js` (full build with compiler) or `vue.min.js` in production, not `vue.runtime.js`.
-- **Tailwind classes not appearing in production**: Add dynamic class names to the `safelist` array in `tailwind.config.js`. Tailwind's JIT compiler can't detect classes constructed at runtime.
+- **Styles not updating in dev**: MiniCssExtractPlugin always extracts to a file. If the backend server caches, hard refresh.
+- **Vue warnings about runtime-only build**: Make sure the alias points to `vue.esm-bundler.js`, not `vue.runtime.esm-bundler.js`.
+- **Tailwind classes not appearing in production**: Add dynamic class names to `safelist` in `tailwind.config.js`.
+- **Dev entry in production build**: Check `includeDev` is `false` when `NODE_ENV=production`.
