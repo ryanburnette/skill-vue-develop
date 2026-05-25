@@ -37,7 +37,6 @@ SKILL.md contains the patterns and decisions. Full code examples are in referenc
 | Setting up auth guard or redirect routes | `references/routing.md` |
 | Setting up the notification system | `references/notification.md` |
 | Setting up build/lint scripts | `references/build-scripts.md` |
-| Migrating a Vue 2 project | `references/vue2-migration.md` |
 
 ## Stack
 
@@ -52,7 +51,6 @@ SKILL.md contains the patterns and decisions. Full code examples are in referenc
 
 No Vue CLI. No Vuex or Pinia. No axios. No sass.
 
-> **Vue 2 projects**: This skill was developed from Vue 2 projects. Older projects using `new Vue()`, `new VueRouter()`, CommonJS, and `$root.$emit/$on` need migration. See `references/vue2-migration.md`.
 
 ## Project Structure
 
@@ -485,4 +483,3 @@ These are strong defaults, not absolute laws. You can deviate from any of them, 
 - `references/routing.md` -- Full beforeEach auth guard, contextual redirect component
 - `references/notification.md` -- Notification lib module
 - `references/build-scripts.md` -- Build, lint, and lint-fix shell scripts
-- `references/vue2-migration.md` -- Notes for migrating Vue 2 projects to Vue 3
