@@ -85,12 +85,12 @@ When the dev server runs behind Caddy or nginx with TLS, the browser needs to co
 ```js
 // Correct: browser connects to 8443 through Caddy, Vite HMR server stays on 3000
 server: {
-  hmr: { protocol: 'wss', host: 'blarcos.localhost', clientPort: 8443 }
+  hmr: { protocol: 'wss', host: 'myapp.localhost', clientPort: 8443 }
 }
 
 // Wrong: Vite tries to create a separate WebSocket server on 8443, which fails inside Docker
 server: {
-  hmr: { protocol: 'wss', host: 'blarcos.localhost', port: 8443 }
+  hmr: { protocol: 'wss', host: 'myapp.localhost', port: 8443 }
 }
 ```
 
@@ -191,15 +191,15 @@ Tailwind directives and `@layer components` for app-wide component styles:
 @tailwind utilities;
 
 @layer components {
-  input.cb-form-input {
+  input.app-form-input {
     @apply block w-full rounded-md border-0 py-1.5 px-3 bg-white text-gray-900
            shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400
            sm:text-sm/6;
   }
-  .cb-button {
+  .app-button {
     @apply rounded-md px-3 py-2 bg-gray-100 text-sm font-semibold text-gray-900
-           hover:text-cogburn bg-white hover:bg-gray-100 shadow-sm ring-2
-           ring-inset ring-gray-300 focus-visible:ring-cogburn;
+           hover:text-red-600 bg-white hover:bg-gray-100 shadow-sm ring-2
+           ring-inset ring-gray-300 focus-visible:ring-red-600;
   }
 }
 

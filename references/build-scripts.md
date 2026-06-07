@@ -14,7 +14,7 @@ docker run --rm \
   -v "$projectdir":/app \
   -v /app/node_modules \
   -e NODE_ENV=production \
-  blarcos-ui \
+  app-ui \
   npx vite build
 ```
 

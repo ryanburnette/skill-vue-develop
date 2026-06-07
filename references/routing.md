@@ -40,10 +40,10 @@ When a list view depends on a context (like a selected period or workspace), cre
 **Route definitions:**
 ```js
 import ContextualToCurrent from '../components/contextual-to-current.vue';
-import Sttpla from '../components/sttpla.vue';
+import Reports from '../components/reports.vue';
 
-{ name: 'STTPLA Redirect', path: '/sttpla', component: ContextualToCurrent },
-{ name: 'STTPLA', path: '/sttpla/:periodId', component: Sttpla },
+{ name: 'Reports Redirect', path: '/reports', component: ContextualToCurrent },
+{ name: 'Reports', path: '/reports/:periodId', component: Reports },
 ```
 
 **Redirect component (`contextual-to-current.vue`):**
