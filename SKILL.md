@@ -1,6 +1,6 @@
 ---
 name: vue-develop
-description: Vue SPA development with webpack and Vue 3. Use when building Vue front-end projects, setting up components, routing, state, or build configuration.
+description: Vue SPA development with Vite and Vue 3. Use when building Vue front-end projects, setting up components, routing, state, or build configuration.
 ---
 
 ## Philosophy
@@ -11,7 +11,7 @@ description: Vue SPA development with webpack and Vue 3. Use when building Vue f
 - Shell scripts for build and dev workflow, not npm scripts.
 - Pure functions in `lib/` when no reactivity is needed.
 - Pragmatic over perfect. Ship working code, iterate later.
-- Run webpack builds in Docker. Keep the host clean.
+- Run builds in Docker. Keep the host clean.
 
 ## Tiers
 
@@ -19,7 +19,7 @@ Every choice in this skill falls into one of three tiers. Know which tier you're
 
 | Tier | Meaning | Examples |
 |------|---------|----------|
-| Philosophy | Core to the approach, not negotiable | Minimal deps, 3-tier components, lib/ for pure utils, shell scripts for build, Docker for webpack |
+| Philosophy | Core to the approach, not negotiable | Minimal deps, 3-tier components, lib/ for pure utils, shell scripts for build, Docker for builds |
 | Pragmatic pattern | Good solution to a real problem, worth repeating | Notification lib, fetch wrapper, contextual redirects, route meta for auth roles |
 | Incidental | Could go either way, not part of the philosophy | PascalCase vs camelCase, hash vs history mode, hyphenated filenames |
 
@@ -31,7 +31,8 @@ SKILL.md contains the patterns and decisions. Full code examples are in referenc
 
 | Task | Load |
 |------|------|
-| Building or modifying webpack config | `references/webpack-config.md` |
+| Building or modifying Vite config | `references/vite-config.md` |
+| Migrating a project from webpack to Vite | `references/webpack-migration.md` |
 | Writing or modifying page components | `references/page-component-patterns.md` |
 | Setting up or modifying the API layer | `references/fetch-wrapper.md` |
 | Setting up auth guard or redirect routes | `references/routing.md` |
@@ -45,30 +46,27 @@ SKILL.md contains the patterns and decisions. Full code examples are in referenc
 | Framework | vue | Vue 3, Options API |
 | Router | vue-router | Flat routes, named routes, route meta |
 | HTTP | fetch | Wrapper in `lib/fetch.js`, not axios |
-| Build | webpack 5 | Single config, environment-based |
+| Build | vite | Single config, ESM, esbuild minifier |
 | CSS | tailwindcss | CSS entry with Tailwind directives, PostCSS pipeline |
 | Linting | eslint + prettier | eslint-plugin-vue (flat config), prettier for formatting |
 
 No Vue CLI. No Vuex or Pinia. No axios. No sass.
 
-
 ## Project Structure
 
 ```
 ui/
-  webpack.config.js          # Single config, dev and production
-  postcss.config.js          # PostCSS plugins (tailwindcss, postcss-preset-env)
-  tailwind.config.js         # Tailwind content paths, theme, safelist
-  eslint.config.js           # ESLint flat config with eslint-plugin-vue
-  package.json
+  vite.config.js            # Single config, dev and production
+  index.html                # Main SPA entry (Vite uses HTML as entry point)
+  postcss.config.js         # PostCSS plugins (tailwindcss, postcss-preset-env, autoprefixer)
+  tailwind.config.js        # Tailwind content paths, theme, safelist
+  eslint.config.js          # ESLint flat config with eslint-plugin-vue
+  package.json              # Must include "type": "module"
+  public/                   # Static assets served at root (icons, manifest, sw.js)
   scripts/
-    build                    # Shell script: production build
+    build                    # Shell script: production build (in Docker)
     lint                     # Shell script: eslint + prettier check
     lint-fix                 # Shell script: eslint fix + prettier write
-  html/
-    index.html               # Main SPA shell
-    signin/index.html        # Signin app shell (separate entry)
-    dev/index.html           # Dev component app shell (separate entry)
   css/
     style.css                # Entry: @tailwind directives + @layer components
   js/
@@ -83,31 +81,34 @@ ui/
 
 ## Build and Dev Workflow
 
-Use shell scripts in `scripts/`. Run webpack in Docker. See `references/build-scripts.md` for the full scripts.
+Use shell scripts in `scripts/`. Run builds in Docker. See `references/build-scripts.md` for the full scripts.
 
-For dev server, run `npx webpack serve` or `npm start` (inside Docker).
+For dev server, run `npx vite` (inside Docker).
 
-### Single webpack.config.js
+### vite.config.js
 
-One config file, not two. Use `dotenv` and `process.env.NODE_ENV` to switch between dev and production behavior.
+One config file, ESM format. Vite handles most concerns that webpack needed plugins for.
 
 Key patterns:
 
-- **Vendor/app split** via `entry.dependsOn` for cache busting. Vendor bundle changes rarely, app bundle changes often.
-- **contenthash filenames** in production, plain names in dev.
-- **Vue alias** points to `vue.esm-bundler.js` (full build with template compiler).
-- **CSS pipeline**: `postcss-loader` (Tailwind + postcss-preset-env) -> `css-loader` -> `MiniCssExtractPlugin.loader`.
-- **HtmlWebpackPlugin** generates HTML with the right chunk imports per entry.
-- **devServer config** for local development with `historyApiFallback`.
-- **DefinePlugin** for Vue feature flags and environment-specific values.
+- **`@vitejs/plugin-vue`** handles SFC compilation (replaces vue-loader + VueLoaderPlugin).
+- **`resolve.alias`** points `vue` to `vue/dist/vue.esm-bundler.js` (full build with template compiler).
+- **`define`** sets Vue feature flags (`__VUE_OPTIONS_API__`, etc.) for tree-shaking.
+- **`server.hmr`** with `clientPort` for Docker+Caddy proxy setups (see `references/vite-config.md`).
+- **`server.watch.usePolling: true`** for Docker filesystem compatibility.
+- **`build.rollupOptions.output.manualChunks`** for vendor/app bundle splitting.
+- **`public/` directory** for static assets served at root (replaces CopyPlugin).
+- **`index.html` at project root** with `<script type="module" src="/js/app.js">` (Vite entry point, replaces HtmlWebpackPlugin).
 
-See `references/webpack-config.md` for the full config.
+PostCSS config is auto-loaded by Vite. No loaders or extract plugins needed.
+
+See `references/vite-config.md` for the full config.
 
 ## Multiple App Entry Points
 
-A project can have separate apps (main, signin, dev) each with their own webpack entry, router, and HTML template. This keeps signin and dev code out of the production bundle.
+A project can have separate apps (main, signin, dev) each with their own Vite entry, router, and HTML template. This keeps signin and dev code out of the production bundle.
 
-Each entry gets its own HtmlWebpackPlugin with `chunks` filtering. See `references/webpack-config.md` for the full entry config.
+Each entry gets its own HTML file at the project root with its own `<script type="module">` tag. Use `build.rollupOptions.input` to specify multiple entry points. See `references/vite-config.md` for the multi-entry config.
 
 ## Component Architecture
 
@@ -176,7 +177,7 @@ export default {
 
 A separate app entry for building components in isolation. Only included in development builds.
 
-The dev app has its own `js/dev/app.js`, its own `html/dev/index.html`, and its own webpack entry. It's completely excluded from the production bundle. See `references/webpack-config.md` for the dev app setup and component rendering pattern.
+The dev app has its own `js/dev/app.js`, its own HTML entry at the project root, and its own Vite entry. It's completely excluded from the production bundle. See `references/vite-config.md` for the dev app setup and component rendering pattern.
 
 Visit `/dev/#/btn` to see a component with mock props. Add new components to both `devComponents` and `mockPropsMap` as you build them.
 
@@ -461,23 +462,23 @@ sh ./scripts/build
 
 These are strong defaults, not absolute laws. You can deviate from any of them, but have a reason and discuss it first.
 
-- NEVER add Vuex/Pinia for 2-3 pieces of global state. Use root instance.
-- NEVER nest component directories. Flat `components/` folder.
-- NEVER use mixins. Use `lib/` for pure functions, root instance for shared state.
-- NEVER skip `loading: true` and `v-if="loading"` on page content that depends on fetched data.
-- NEVER use `v-if` scattered throughout a template when one loading guard at the top works.
-- NEVER make an async API call without try/catch and user-facing error handling.
+- ALWAYS use root instance for 2-3 pieces of global state. Add Vuex/Pinia only when shared state outgrows root.
+- ALWAYS keep `components/` flat. Nest directories only when a component has companion sub-components.
+- ALWAYS use `lib/` for pure functions and root instance for shared state. Mixins are not a pattern we use.
+- ALWAYS start page content with `loading: true` and `v-if="loading"`.
 - ALWAYS use named routes for programmatic navigation.
 - ALWAYS include a 404 catch-all route.
 - ALWAYS put pure utility functions in `lib/`, not in component methods.
 - ALWAYS use shell scripts for build and dev commands.
 - ALWAYS use `if ($event) $event.preventDefault()` as first line of event handlers.
 - ALWAYS use specific busy flags (`saveBusy`, `deleteBusy`) instead of one generic `busy`.
-- ALWAYS run webpack builds in Docker.
+- ALWAYS wrap async API calls in try/catch with user-facing error handling.
+- ALWAYS run builds in Docker.
 
 ## References
 
-- `references/webpack-config.md` -- Full webpack configuration, single config pattern, dev app setup
+- `references/vite-config.md` -- Full Vite configuration, single config pattern, multi-entry setup, HMR config
+- `references/webpack-migration.md` -- Migrating an existing webpack project to Vite
 - `references/page-component-patterns.md` -- Page component templates, create/edit sharing, delete confirmation, save method
 - `references/fetch-wrapper.md` -- Fetch wrapper setup, error normalization, token refresh, 401 retry
 - `references/routing.md` -- Full beforeEach auth guard, contextual redirect component

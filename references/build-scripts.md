@@ -1,12 +1,21 @@
 # Build Scripts
 
-Shell scripts for build and dev workflow. Run webpack in Docker.
+Shell scripts for build and dev workflow. Run builds in Docker.
 
 ## scripts/build
 
 ```sh
 #!/bin/sh
-NODE_ENV=production npx webpack
+set -eu
+
+projectdir="$(cd "$(dirname "$0")/.." && pwd)"
+
+docker run --rm \
+  -v "$projectdir":/app \
+  -v /app/node_modules \
+  -e NODE_ENV=production \
+  blarcos-ui \
+  npx vite build
 ```
 
 ## scripts/lint
@@ -27,4 +36,4 @@ npx eslint js/ --ext .js,.vue --fix
 npx prettier --write 'js/**/*.{js,vue}' 'css/**/*.css' '*.config.js'
 ```
 
-For dev server, run `npx webpack serve` or `npm start` (inside Docker).
+For dev server, run `npx vite` (inside Docker).
