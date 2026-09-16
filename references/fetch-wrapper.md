@@ -1,6 +1,6 @@
 # Fetch Wrapper
 
-A thin wrapper around native `fetch` that handles auth token injection, JSON serialization, and error normalization. No axios.
+A thin wrapper around native `fetch` that handles auth token injection, JSON serialization, and error normalization.
 
 ## Basic Pattern
 

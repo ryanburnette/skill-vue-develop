@@ -45,12 +45,10 @@ SKILL.md contains the patterns and decisions. Full code examples are in referenc
 |---------|---------|-------|
 | Framework | vue | Vue 3, Options API |
 | Router | vue-router | Flat routes, named routes, route meta |
-| HTTP | fetch | Wrapper in `lib/fetch.js`, not axios |
+| HTTP | fetch | Wrapper in `lib/fetch.js` for auth and other project details |
 | Build | vite | Single config, ESM, esbuild minifier |
 | CSS | tailwindcss | CSS entry with Tailwind directives, PostCSS pipeline |
 | Linting | eslint + prettier | eslint-plugin-vue (flat config), prettier for formatting |
-
-No Vue CLI. No Vuex or Pinia. No axios. No sass.
 
 ## Project Structure
 
@@ -291,7 +289,7 @@ This works well for a few pieces of shared state (auth, context, feature flags).
 
 ### Fetch Wrapper
 
-A thin wrapper around native `fetch` in `lib/fetch.js`. Handles auth token injection, JSON body serialization, header defaults, and error normalization. No axios. No interceptors. The wrapper is the interceptor.
+A thin wrapper around native `fetch` in `lib/fetch.js`. Handles auth token injection, JSON body serialization, header defaults, and error normalization. The wrapper is the interceptor.
 
 See `references/fetch-wrapper.md` for the full wrapper with token refresh and 401 retry.
 
