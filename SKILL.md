@@ -7,7 +7,7 @@ description: Vue SPA development with Vite and Vue 3. Use when building Vue fron
 
 - Minimal dependencies. Understand every package in `package.json`.
 - Build from the ground up. No CLI scaffolding, no magic generators.
-- Simple state over complex state management. Use `$root` until it hurts.
+- Prefer `$root` for a few pieces of shared state unless the project already has another pattern.
 - Shell scripts for build and dev workflow, not npm scripts.
 - Pure functions in `lib/` when no reactivity is needed.
 - Pragmatic over perfect. Ship working code, iterate later.
@@ -279,7 +279,7 @@ vm.$root.hasRole('admin');
 vm.$root.toSignin();
 ```
 
-This works well for 3-4 pieces of shared state (auth, context, feature flags). No need for a state management library.
+This works well for a few pieces of shared state (auth, context, feature flags). If the project already uses a store, follow that.
 
 ### Cross-Component Communication
 
@@ -462,7 +462,6 @@ sh ./scripts/build
 
 These are strong defaults, not absolute laws. You can deviate from any of them, but have a reason and discuss it first.
 
-- ALWAYS use root instance for 2-3 pieces of global state. Add Vuex/Pinia only when shared state outgrows root.
 - ALWAYS keep `components/` flat. Nest directories only when a component has companion sub-components.
 - ALWAYS use `lib/` for pure functions and root instance for shared state. Mixins are not a pattern we use.
 - ALWAYS start page content with `loading: true` and `v-if="loading"`.
